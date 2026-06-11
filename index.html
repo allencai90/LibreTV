@@ -12,15 +12,15 @@
 
     <script>
         (function() {
-            // 强力中转函数：将暗黑的豆瓣链接无缝转换为万能的 WordPress 官方全球加速节点
             function convertUrl(url) {
-                if (url && typeof url === 'string' && url.indexOf('doubanio.com') !== -1 && url.indexOf('wp.com') === -1) {
-                    return url.replace(/^https?:\/\//, 'https://i0.wp.com/');
+                if (url && typeof url === 'string' && url.indexOf('doubanio.com') !== -1 && url.indexOf('/img-proxy') === -1) {
+                    // 将豆瓣链接转换为本地同源代理链接，彻底避开第三方代理被封的问题
+                    return '/img-proxy?url=' + encodeURIComponent(url);
                 }
                 return url;
             }
 
-            // 1. 劫持 img.src = '...' 赋值操作
+            // 1. 劫持 img.src = '...'
             var imgSrcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
             if (imgSrcDesc && imgSrcDesc.set) {
                 Object.defineProperty(HTMLImageElement.prototype, 'src', {
@@ -29,7 +29,7 @@
                 });
             }
 
-            // 2. 劫持 img.setAttribute('src', '...') 方法
+            // 2. 劫持 img.setAttribute('src', '...')
             var originalSetAttr = Element.prototype.setAttribute;
             Element.prototype.setAttribute = function(name, val) {
                 if (name && name.toLowerCase() === 'src' && this.tagName.toLowerCase() === 'img') {
@@ -38,14 +38,14 @@
                 originalSetAttr.call(this, name, val);
             };
 
-            // 3. 劫持 innerHTML 赋值（防范影视项目用字符串模板动态渲染卡片）
+            // 3. 劫持 innerHTML 拼接
             var innerHTMLDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
             if (innerHTMLDesc && innerHTMLDesc.set) {
                 Object.defineProperty(Element.prototype, 'innerHTML', {
                     set: function(val) {
                         if (typeof val === 'string' && val.indexOf('doubanio.com') !== -1) {
                             val = val.replace(/https?:\/\/img\d+\.doubanio\.com/g, function(match) {
-                                return match.replace(/^https?:\/\//, 'https://i0.wp.com/');
+                                return '/img-proxy?url=' + encodeURIComponent(match);
                             });
                         }
                         innerHTMLDesc.set.call(this, val);
