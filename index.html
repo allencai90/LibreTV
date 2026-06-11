@@ -4,12 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LibreTV - 免费在线视频搜索与观看平台</title>
-    <meta name="description" content="LibreTV是一个免费的在线视频搜索 platform，无广告、安全，提供来自多个视频源的内容搜索与观看服务，无需注册即可使用。">
+    <meta name="description" content="LibreTV是一个免费的在线视频搜索平台，无广告、安全，提供来自多个视频源的内容搜索与观看服务，无需注册即可使用。">
     <meta name="keywords" content="在线视频,免费视频,视频搜索,电影,电视剧,LibreTV">
     <meta name="author" content="LibreTV Team">
 
-    <meta name="referrer" content="no-referrer">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+
+    <script>
+        document.addEventListener('error', function (event) {
+            var target = event.target;
+            // 检查是否是图片加载失败，且属于豆瓣源
+            if (target.tagName.toLowerCase() === 'img' && target.src.indexOf('doubanio.com') !== -1) {
+                // 确保只重试一次，防止死循环
+                if (!target.dataset.retry) {
+                    target.dataset.retry = 'true';
+                    // 使用高质量免费图片代理服务 weserv.nl 中转加载海报
+                    target.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(target.src);
+                }
+            }
+        }, true); // 使用事件捕获，确保动态生成的影视卡片也能被监听到
+    </script>
 
     <link rel="icon" href="image/logo.png">
     <link rel="apple-touch-icon" href="image/logo-black.png">
@@ -266,7 +280,7 @@
                 
                 <div class="text-center md:text-right">
                     <p class="text-gray-500 text-sm max-w-md">
-                        免责声明：本站仅为视频搜索工具，不存储、上传或分发任何视频内容。
+                        免责声明：本站仅为视频搜索工具，不存储、上传或分发任何视频内容.
                         所有视频均来自第三方API接口。如有侵权，请联系相关内容提供方。
                     </p>
                     <div class="mt-2 flex justify-center md:justify-end space-x-4">
