@@ -11,18 +11,49 @@
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
     <script>
-        document.addEventListener('error', function (event) {
-            var target = event.target;
-            // 检查是否是图片加载失败，且属于豆瓣源
-            if (target.tagName.toLowerCase() === 'img' && target.src.indexOf('doubanio.com') !== -1) {
-                // 确保只重试一次，防止死循环
-                if (!target.dataset.retry) {
-                    target.dataset.retry = 'true';
-                    // 使用高质量免费图片代理服务 weserv.nl 中转加载海报
-                    target.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(target.src);
+        (function() {
+            // 强力中转函数：将暗黑的豆瓣链接无缝转换为万能的 WordPress 官方全球加速节点
+            function convertUrl(url) {
+                if (url && typeof url === 'string' && url.indexOf('doubanio.com') !== -1 && url.indexOf('wp.com') === -1) {
+                    return url.replace(/^https?:\/\//, 'https://i0.wp.com/');
                 }
+                return url;
             }
-        }, true); // 使用事件捕获，确保动态生成的影视卡片也能被监听到
+
+            // 1. 劫持 img.src = '...' 赋值操作
+            var imgSrcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+            if (imgSrcDesc && imgSrcDesc.set) {
+                Object.defineProperty(HTMLImageElement.prototype, 'src', {
+                    set: function(val) { imgSrcDesc.set.call(this, convertUrl(val)); },
+                    get: function() { return imgSrcDesc.get.call(this); }
+                });
+            }
+
+            // 2. 劫持 img.setAttribute('src', '...') 方法
+            var originalSetAttr = Element.prototype.setAttribute;
+            Element.prototype.setAttribute = function(name, val) {
+                if (name && name.toLowerCase() === 'src' && this.tagName.toLowerCase() === 'img') {
+                    val = convertUrl(val);
+                }
+                originalSetAttr.call(this, name, val);
+            };
+
+            // 3. 劫持 innerHTML 赋值（防范影视项目用字符串模板动态渲染卡片）
+            var innerHTMLDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+            if (innerHTMLDesc && innerHTMLDesc.set) {
+                Object.defineProperty(Element.prototype, 'innerHTML', {
+                    set: function(val) {
+                        if (typeof val === 'string' && val.indexOf('doubanio.com') !== -1) {
+                            val = val.replace(/https?:\/\/img\d+\.doubanio\.com/g, function(match) {
+                                return match.replace(/^https?:\/\//, 'https://i0.wp.com/');
+                            });
+                        }
+                        innerHTMLDesc.set.call(this, val);
+                    },
+                    get: function() { return innerHTMLDesc.get.call(this); }
+                });
+            }
+        })();
     </script>
 
     <link rel="icon" href="image/logo.png">
@@ -280,7 +311,7 @@
                 
                 <div class="text-center md:text-right">
                     <p class="text-gray-500 text-sm max-w-md">
-                        免责声明：本站仅为视频搜索工具，不存储、上传或分发任何视频内容.
+                        免责声明：本站仅为视频搜索工具，不存储、上传或分发任何视频内容。
                         所有视频均来自第三方API接口。如有侵权，请联系相关内容提供方。
                     </p>
                     <div class="mt-2 flex justify-center md:justify-end space-x-4">
