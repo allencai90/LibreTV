@@ -11,44 +11,17 @@
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
     <script>
-        (function() {
-            // 精准修复函数：把加载失败的豆瓣图片无缝递给百度进行通道中转
-            function fixDoubanImage(img) {
-                if (img && img.src && img.src.indexOf('doubanio.com') !== -1 && img.src.indexOf('baidu.com') === -1 && !img.dataset.imgFixed) {
-                    img.dataset.imgFixed = '1'; // 开启防死循环标记
-                    
-                    // 这次绝对是百度大厂节点！国内海外畅通无阻，完美剥离防盗链
-                    img.src = 'https://image.baidu.com/search/down?url=' + encodeURIComponent(img.src);
+        window.addEventListener('error', function (e) {
+            var img = e.target;
+            // 唯独当确实是 <img> 标签加载失败，且属于豆瓣源时才出手补救
+            if (img && img.tagName === 'IMG' && img.src && img.src.indexOf('doubanio.com') !== -1) {
+                if (!img.dataset.fixed) {
+                    img.dataset.fixed = '1'; // 严防死循环
+                    // 采用最稳健的完整编码，借由万能节点中转海报
+                    img.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(img.src);
                 }
             }
-
-            // 纯净安全的 DOM 监听器，100% 不污染后台 API 数据
-            var observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes) {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.tagName && node.tagName.toLowerCase() === 'img') {
-                                fixDoubanImage(node);
-                            } else if (node.querySelectorAll) {
-                                var imgs = node.querySelectorAll('img');
-                                imgs.forEach(fixDoubanImage);
-                            }
-                        });
-                    }
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'src' && mutation.target.tagName.toLowerCase() === 'img') {
-                        fixDoubanImage(mutation.target);
-                    }
-                });
-            });
-
-            // 静态与动态内容全量监控
-            observer.observe(document.documentElement, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['src']
-            });
-        })();
+        }, true); // 利用事件捕获阶段，确保动态刷出的影视卡片也能被完美捕捉
     </script>
 
     <link rel="icon" href="image/logo.png">
