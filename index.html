@@ -11,17 +11,50 @@
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
     <script>
-        window.addEventListener('error', function (e) {
-            var img = e.target;
-            // 唯独当确实是 <img> 标签加载失败，且属于豆瓣源时才出手补救
-            if (img && img.tagName === 'IMG' && img.src && img.src.indexOf('doubanio.com') !== -1) {
-                if (!img.dataset.fixed) {
-                    img.dataset.fixed = '1'; // 严防死循环
-                    // 采用最稳健的完整编码，借由万能节点中转海报
-                    img.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(img.src);
+        (function() {
+            // 纯净域名替换：将 img*.doubanio.com 直接映射到专门的防封大厂镜像节点
+            function bypassDouban(img) {
+                if (img && img.src && img.src.indexOf('doubanio.com') !== -1 && !img.dataset.dbFixed) {
+                    img.dataset.dbFixed = '1'; // 严防死循环
+                    // 秒开专线，不经过任何第三方脚本中转，直达图片流
+                    img.src = img.src.replace(/https?:\/\/[a-z0-9.]*doubanio\.com/, 'https://douban.smartgslb.com');
                 }
             }
-        }, true); // 利用事件捕获阶段，确保动态刷出的影视卡片也能被完美捕捉
+
+            // 使用高效率的原生异步观察器，只在海报标签塞入页面时进行纯粹的属性修正
+            var observer = new MutationObserver(function(mutations) {
+                for (var i = 0; i < mutations.length; i++) {
+                    var addedNodes = mutations[i].addedNodes;
+                    if (addedNodes) {
+                        for (var j = 0; j < addedNodes.length; j++) {
+                            var node = addedNodes[j];
+                            if (node.tagName === 'IMG') {
+                                bypassDouban(node);
+                            } else if (node.querySelectorAll) {
+                                var imgs = node.querySelectorAll('img');
+                                for (var k = 0; k < imgs.length; k++) {
+                                    bypassDouban(imgs[k]);
+                                }
+                            }
+                        }
+                    }
+                    // 兼容懒加载组件动态改写 src 属性的场景
+                    if (mutations[i].type === 'attributes' && mutations[i].attributeName === 'src') {
+                        if (mutations[i].target.tagName === 'IMG') {
+                            bypassDouban(mutations[i].target);
+                        }
+                    }
+                }
+            });
+
+            // 挂载到根节点，全量监控后续动态刷出来的影视卡片
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['src']
+            });
+        })();
     </script>
 
     <link rel="icon" href="image/logo.png">
@@ -279,7 +312,7 @@
                 
                 <div class="text-center md:text-right">
                     <p class="text-gray-500 text-sm max-w-md">
-                        免责声明：本站仅为视频搜索工具，不存储、上传或分发任何视频内容。
+                        免责声明：本站仅为视频搜索工具，不存储、上传或分发 any 视频内容。
                         所有视频均来自第三方API接口。如有侵权，请联系相关内容提供方。
                     </p>
                     <div class="mt-2 flex justify-center md:justify-end space-x-4">
