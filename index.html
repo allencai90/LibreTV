@@ -12,23 +12,18 @@
 
     <script>
         (function() {
-            // 安全替换函数：只影响最终渲染的 img 标签
+            // 精准修复函数：只把豆瓣图片偷偷递给百度进行生态中转
             function fixDoubanImage(img) {
-                if (img && img.src && img.src.indexOf('doubanio.com') !== -1 && img.src.indexOf('url=') === -1 && !img.dataset.imgFixed) {
-                    img.dataset.imgFixed = '1'; // 标记已处理，防止死循环
+                if (img && img.src && img.src.indexOf('doubanio.com') !== -1 && img.src.indexOf('baidu.com') === -1 && !img.dataset.imgFixed) {
+                    img.dataset.imgFixed = '1'; // 标记已处理，死死防住死循环
                     var originalSrc = img.src;
                     
-                    // 优先使用万能的国际图片加速节点进行中转
-                    img.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(originalSrc);
-                    
-                    // 备用双保险：如果加速节点偶尔打不开，自动降级切换为专线镜像
-                    img.onerror = function() {
-                        img.src = originalSrc.replace(/https?:\/\/[a-z0-9.]*doubanio\.com/, 'https://img.asny.me');
-                    };
+                    // 借用百度正规图片服务拉取海报，彻底解决 418/400/域名解析失败问题
+                    img.src = 'https://image.baidu.com/search/down?url=' + encodeURIComponent(originalSrc);
                 }
             }
 
-            // 启动 DOM 监听器，在不破坏任何 JS 运行的前提下捕捉新生成的海报元素
+            // 保持上一轮完全不破坏网页 JS 生态的监听器
             var observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(mutation) {
                     if (mutation.addedNodes) {
@@ -41,14 +36,13 @@
                             }
                         });
                     }
-                    // 兼容懒加载情况：如果图片后来被修改了 src 属性，也能精准捕捉
                     if (mutation.type === 'attributes' && mutation.attributeName === 'src' && mutation.target.tagName.toLowerCase() === 'img') {
                         fixDoubanImage(mutation.target);
                     }
                 });
             });
 
-            // 开始全局监听
+            // 全局静态与动态内容全量监控
             observer.observe(document.documentElement, {
                 childList: true,
                 subtree: true,
@@ -364,7 +358,7 @@
                     欢迎使用 LibreTV。在开始使用前，请您了解并同意以下条款：
                 </p>
                 <p>
-                    <strong class="text-blue-400">服务性质：</strong> LibreTV 仅提供视频搜索服务，不直接提供、存储 or 上传任何视频内容。所有搜索结果均来自第三方公开接口。
+                    <strong class="text-blue-400">服务性质：</strong> LibreTV 仅提供视频搜索服务，不直接提供、存储或上传任何视频内容。所有搜索结果均来自第三方公开接口。
                 </p>
                 <p>
                     <strong class="text-blue-400">用户责任：</strong> 用户在使用本站服务时，须遵守相关法律法规，不得利用搜索结果从事侵权行为，如下载、传播未经授权的作品等。
