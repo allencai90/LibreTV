@@ -433,5 +433,18 @@
     <script src="js/version-check.js"></script>
 
     <script src="js/index-page.js"></script>
+    <script>
+    // 全局图片加载失败兜底：自动用 wsrv.nl 代理重试
+    document.addEventListener('error', function(e) {
+        var img = e.target;
+        if (img.tagName === 'IMG' && !img.dataset.retried) {
+            img.dataset.retried = '1';
+            var originalSrc = img.src;
+            if (originalSrc && originalSrc.indexOf('wsrv.nl') === -1) {
+                img.src = 'https://wsrv.nl/?url=' + encodeURIComponent(originalSrc);
+            }
+        }
+    }, true); // true = 捕获阶段，必须加
+</script>
 </body>
 </html>
