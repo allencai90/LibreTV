@@ -10,18 +10,19 @@
 
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
+    <!-- ✅ 修复1：禁止发送 Referrer，绕过豆瓣防盗链 -->
+    <meta name="referrer" content="no-referrer">
+
     <script>
         (function() {
-            // 纯净域名替换：将 img*.doubanio.com 直接映射到专门的防封大厂镜像节点
+            // ✅ 修复2：使用 wsrv.nl 公共图片代理，彻底解决豆瓣图片不显示问题
             function bypassDouban(img) {
                 if (img && img.src && img.src.indexOf('doubanio.com') !== -1 && !img.dataset.dbFixed) {
-                    img.dataset.dbFixed = '1'; // 严防死循环
-                    // 秒开专线，不经过任何第三方脚本中转，直达图片流
-                    img.src = img.src.replace(/https?:\/\/[a-z0-9.]*doubanio\.com/, 'https://douban.smartgslb.com');
+                    img.dataset.dbFixed = '1';
+                    img.src = 'https://wsrv.nl/?url=' + encodeURIComponent(img.src);
                 }
             }
 
-            // 使用高效率的原生异步观察器，只在海报标签塞入页面时进行纯粹的属性修正
             var observer = new MutationObserver(function(mutations) {
                 for (var i = 0; i < mutations.length; i++) {
                     var addedNodes = mutations[i].addedNodes;
@@ -38,7 +39,6 @@
                             }
                         }
                     }
-                    // 兼容懒加载组件动态改写 src 属性的场景
                     if (mutations[i].type === 'attributes' && mutations[i].attributeName === 'src') {
                         if (mutations[i].target.tagName === 'IMG') {
                             bypassDouban(mutations[i].target);
@@ -47,7 +47,6 @@
                 }
             });
 
-            // 挂载到根节点，全量监控后续动态刷出来的影视卡片
             observer.observe(document.documentElement, {
                 childList: true,
                 subtree: true,
