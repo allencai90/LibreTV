@@ -11,19 +11,51 @@
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
     <script>
-        window.addEventListener('error', function (event) {
-            var target = event.target;
-            // 准确定位：只有当确实是 <img> 标签加载失败，且源自豆瓣时才干预
-            if (target && target.tagName && target.tagName.toLowerCase() === 'img') {
-                var src = target.src;
-                if (src && src.indexOf('doubanio.com') !== -1 && !target.dataset.retry) {
-                    target.dataset.retry = '1';
-                    // 剥离原有的 http/https 头，交由高可用的公共万能图片加速节点无感中转
-                    var cleanUrl = src.replace(/^https?:\/\//, '');
-                    target.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(cleanUrl);
+        (function() {
+            // 安全替换函数：只影响最终渲染的 img 标签
+            function fixDoubanImage(img) {
+                if (img && img.src && img.src.indexOf('doubanio.com') !== -1 && img.src.indexOf('url=') === -1 && !img.dataset.imgFixed) {
+                    img.dataset.imgFixed = '1'; // 标记已处理，防止死循环
+                    var originalSrc = img.src;
+                    
+                    // 优先使用万能的国际图片加速节点进行中转
+                    img.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(originalSrc);
+                    
+                    // 备用双保险：如果加速节点偶尔打不开，自动降级切换为专线镜像
+                    img.onerror = function() {
+                        img.src = originalSrc.replace(/https?:\/\/[a-z0-9.]*doubanio\.com/, 'https://img.asny.me');
+                    };
                 }
             }
-        }, true); // 利用事件捕获机制，确保后续动态刷出来的影视卡片海报也能完美生效
+
+            // 启动 DOM 监听器，在不破坏任何 JS 运行的前提下捕捉新生成的海报元素
+            var observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.tagName && node.tagName.toLowerCase() === 'img') {
+                                fixDoubanImage(node);
+                            } else if (node.querySelectorAll) {
+                                var imgs = node.querySelectorAll('img');
+                                imgs.forEach(fixDoubanImage);
+                            }
+                        });
+                    }
+                    // 兼容懒加载情况：如果图片后来被修改了 src 属性，也能精准捕捉
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'src' && mutation.target.tagName.toLowerCase() === 'img') {
+                        fixDoubanImage(mutation.target);
+                    }
+                });
+            });
+
+            // 开始全局监听
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['src']
+            });
+        })();
     </script>
 
     <link rel="icon" href="image/logo.png">
@@ -332,7 +364,7 @@
                     欢迎使用 LibreTV。在开始使用前，请您了解并同意以下条款：
                 </p>
                 <p>
-                    <strong class="text-blue-400">服务性质：</strong> LibreTV 仅提供视频搜索服务，不直接提供、存储或上传任何视频内容。所有搜索结果均来自第三方公开接口。
+                    <strong class="text-blue-400">服务性质：</strong> LibreTV 仅提供视频搜索服务，不直接提供、存储 or 上传任何视频内容。所有搜索结果均来自第三方公开接口。
                 </p>
                 <p>
                     <strong class="text-blue-400">用户责任：</strong> 用户在使用本站服务时，须遵守相关法律法规，不得利用搜索结果从事侵权行为，如下载、传播未经授权的作品等。
